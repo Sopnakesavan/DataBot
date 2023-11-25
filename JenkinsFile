@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+
+    environment {
+        // Set common variables
+        COMMON_DB_URL = 'your_database_url'
+        COMMON_BLAZER_USERNAME = 'admin'
+        COMMON_BLAZER_PASSWORD = 'your_blazer_password'
+        GITHUB_REPO_URL = 'https://github.com/your_github_username/your_repo.git'
+        GITHUB_BRANCH = 'your_branch'
+        DOCKER_IMAGE_NAME = 'your_docker_image_name'
+        BLAZER_CONTAINER_NAME = 'blazer-authv'
+    }
+
+    stages {
+        stage('Clone Git Repository') {
+            steps {
+                git credentialsId: 'your_credentials_id', url: "${GITHUB_REPO_URL}", branch: "${GITHUB_BRANCH}"
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_IMAGE_NAME} ."
+                }
+            }
+        }
+
+        stage('Run Blazer Container') {
+            steps {
+                script {
+                    sh """
+                    docker run -d --name ${BLAZER_CONTAINER_NAME} \
+                        -p 8030:8030 \
+                        --network host \
+                        -e DATABASE_URL=\$COMMON_DB_URL \
+                        -e SECONDARY_DATABASE_URL=\$COMMON_DB_URL \
+                        -e THIRD_DATABASE_URL=\$COMMON_DB_URL \
+                        -e FOUR_DATABASE_URL=\$COMMON_DB_URL \
+                        -e BLAZER_USERNAME=\$COMMON_BLAZER_USERNAME \
+                        -e BLAZER_PASSWORD=\$COMMON_BLAZER_PASSWORD \
+                        ${DOCKER_IMAGE_NAME} rails server -b 0.0.0.0 -p 8030
+                    """
+                }
+            }
+        }
+    }
+}
